@@ -20,7 +20,7 @@ from os.path import expanduser
 import re
 import uuid
 import sys
-import time
+from time import strftime
 import argparse
 import string
 
@@ -40,8 +40,12 @@ def on_html_response(html):
   unicode_html = html.decode('shift_jisx0213')
   posts = scrape_futaba(unicode_html)
   for post in posts:
-    print '{date} *** {time} *** {number} *** {text}'.format(date=post.date, \
-      time=post.time, number=post.number, text=post.text) 
+    date_time = strftime("%a, %d %b %Y %H:%M:%S", post.time)
+    post_number = str(post.number)
+    print '{date_time} *** {post_number} *** {text}'.format( \
+      date_time=date_time, \
+      post_number=post_number, \
+      text=post.text) 
   
   reactor.stop()
 

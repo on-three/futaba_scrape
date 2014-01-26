@@ -11,19 +11,19 @@ DATE: Saturday, January 25th 2014
 from bs4 import BeautifulSoup
 import string
 import re
+from time import strptime
 import romkan
 
-DATE_TIME_NUMBER_REGEX = ur'.*?(?P<date>\d{2}/\d{2}/\d{2}).*?(?P<time>\d{2}:\d{2}:\d{2}).*?No.(?P<number>\d*)'
+DATE_TIME_NUMBER_REGEX = ur'.*?(?P<date>(?P<year>\d{2})/(?P<month>\d{2})/(?P<day>\d{2})).*?(?P<time>(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})).*?No.(?P<number>\d*)'
 
 class Post(object):
   '''
   the usual. encapsulates data from a futaba post
   '''
-  def __init__(self, date, time, number, text, image):
+  def __init__(self, time, number, text, image):
     '''
     constructor
     '''
-    self.date = date
     self.time = time
     self.number = number
     self.text = text
@@ -31,17 +31,30 @@ class Post(object):
 
 def extract_date_time_number(text):
   '''
-  return a 3 tuple of post (date, time, number)
+  return a 2 tuple of post (datetime, post_number)
   '''
-  date = ''
-  time = ''
-  number = ''
+  time = None
+  number = 0
   m = re.match(re.compile(DATE_TIME_NUMBER_REGEX, re.UNICODE), text)
   if m:
-    date=m.groupdict()['date'].encode('utf-8')
-    time=m.groupdict()['time'].encode('utf-8')
-    number=m.groupdict()['number'].encode('utf-8')
-  return (date, time, number)
+    #I'm drawing out more info here than necessary
+    #this is in case I need the data at some point
+    #Note the groupdict dictionary entries originate
+    #in the DATE_TIME_NUMBER_REGEX above
+    d=m.groupdict()['date'].encode('utf-8')
+    #year=m.groupdict()['year'].encode('utf-8')
+    #month=m.groupdict()['month'].encode('utf-8')
+    #day=m.groupdict()['day'].encode('utf-8')
+    t=m.groupdict()['time'].encode('utf-8')
+    #hour=m.groupdict()['hour'].encode('utf-8')
+    #minute=m.groupdict()['minute'].encode('utf-8')
+    #second=m.groupdict()['second'].encode('utf-8')
+    n=m.groupdict()['number'].encode('utf-8')
+
+    #form a datetime structure from the extracted data
+    date_time = strptime('{d} {t}'.format(d=d, t=t), '%y/%m/%d %H:%M:%S')
+    number = int(n)  
+  return (date_time, number)
 
 def scrape_futaba(html):
   '''
@@ -58,7 +71,7 @@ def scrape_futaba(html):
     img = marker.findNext('a')
     text = marker.findNext('blockquote')
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
-    date, time, number = extract_date_time_number(date_number)
-    results.append(Post(date, time, number, text, img))
+    time, number = extract_date_time_number(date_number)
+    results.append(Post(time, number, text, img))
   return results
 
