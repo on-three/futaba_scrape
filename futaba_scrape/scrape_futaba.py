@@ -40,7 +40,7 @@ def on_html_response(html):
   unicode_html = html.decode('shift_jisx0213')
   posts = scrape_futaba(unicode_html)
   for post in posts:
-    print post
+    print unicode(post)
   reactor.stop()
 
 def on_html_error(error):

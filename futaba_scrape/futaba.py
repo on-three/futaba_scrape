@@ -36,22 +36,20 @@ class Post(object):
     #in responses this will typically remain empty.
     self.responses = responses
 
-  def __str__(self):
+  def __unicode__(self):
     '''
     Direct printing of class
     '''
-    date_time = strftime("%a, %d %b %Y %H:%M:%S", self.time)
-    post_number = str(self.number)
-    s = '{date_time} *** {post_number} *** {text}\n'.format( \
-      date_time=date_time, \
-      post_number=post_number, \
-      text=self.text)
+    date_time = unicode(strftime(u"%a, %d %b %Y %H:%M:%S", self.time))
+    post_number = unicode(self.number)
+    s = u'{d} {p} {t}\n'.format(d=date_time, p=post_number, t=unicode(self.text))
     for post_number, response in self.responses.iteritems():
-      date_time = strftime("%a, %d %b %Y %H:%M:%S", response.time)
-      s += '===>{date_time} *** {post_number} *** {text}\n'.format( \
-        date_time=date_time, \
-        post_number=post_number, \
-        text=response.text)
+      pn = unicode(post_number)
+      date_time = unicode(strftime(u"%a, %d %b %Y %H:%M:%S", response.time))
+      s += u'===>{d} {p} {t}\n'.format( \
+        d=date_time, \
+        p=pn, \
+        t=response.text)
     return s
 
   @staticmethod
@@ -63,10 +61,11 @@ class Post(object):
     arg: html a bs4 node representing the cell
     '''
     text = html.findNext('blockquote')
+    contents = u''.join(text.findAll(text=True))
     img = html.findNext('a')
     date_number = html.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
-    return Post(time, number, text, img)
+    return Post(time, number, contents, img)
     
 
 def extract_date_time_number(text):
@@ -109,10 +108,11 @@ def extract_threads(html):
   for marker in markers:
     img = marker.findNext('a')
     text = marker.findNext('blockquote')
+    contents = ''.join(text.findAll(text=True))
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
     responses = extract_responses(marker)
-    results.append(Post(time, number, text, img, responses))
+    results.append(Post(time, number, contents, img, responses))
   return results
 
 def extract_responses(thread_start_marker):
