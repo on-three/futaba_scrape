@@ -34,11 +34,10 @@ for thread in threads:
   date_string = strftime(u"%a, %d %b %Y %H:%M:%S", thread.time)
   post_number = thread.number
   post_text = thead.text
-  #the following net yet fully supported
   image_url = thread.img 
   thumbnail_url = thread.thumbnail
-  poster = thread.poster
-  description = thread.description
+  thread_poster = thread.name
+  thread_title = thread.title
 ```
 
 We also currently fetch all responses from the associated thread URL. These are available in the Post.responses dictionary. The diciontary keys are post id numbers, and the values are Post objects, one for each response.
