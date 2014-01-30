@@ -23,7 +23,8 @@ RESPONSE_MARKER_REGEX = ur'.*?\u2026.*?'
 #basic futaba url
 #http://dat.2chan.net/16/futaba.htm
 #http://dat.2chan.net/16/2.htm (where number can be 1-10 (higher?)
-FUTABA_BOARD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/(futaba|\d{1,2}).htm$'
+FUTABA_BOARD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/(?P<page>(futaba|\d{1,2})\.htm$)'
+FUTABA_PAGE_REGEX = ur'(futaba|\d{1,2})\.htm$'
 #futaba respond page url (on same board as above)
 #http://dat.2chan.net/16/res/476764.htm
 FUTABA_THREAD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/res/\d*?\.htm$'
@@ -42,10 +43,11 @@ def response_url_from_board(url, post_id):
   on that page, form the url of the response page.
   This is to give us URLs of _complete_ response pages
   '''
-  if not is_futaba_url(url):
+  if not is_futaba_board(url):
     return ''
-  pass
-  
+  page = 'res/{post_id}.htm'.format(post_id=str(post_id))
+  rurl = re.sub(FUTABA_PAGE_REGEX, page, url)
+  return rurl
 
 class Post(object):
   '''
@@ -143,11 +145,11 @@ def extract_threads(url, html):
     contents = u''.join([unicode(x) for x in text.contents])
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
-    responses = extract_responses(url, marker)
+    responses = extract_responses(marker)
     results.append(Post(time, number, contents, img, responses))
   return results
 
-def extract_responses(url, thread_start_marker):
+def extract_responses(thread_start_marker):
   '''
   arg: thread_start_marker is a bf4 object that represents the start
   of a thread in a bf4 'soup' object.
@@ -157,10 +159,6 @@ def extract_responses(url, thread_start_marker):
   and value equal to a Post object for each response.
   '''
   responses = {}
-  #fetch html from the response page of this thread start and then parse
-  #it for _all_ responses
-  #response_url = 
-
   thread_start = re.compile(THREAD_START_MARKER_REGEX, re.UNICODE|re.DOTALL)
   response_start = re.compile(RESPONSE_MARKER_REGEX, re.UNICODE|re.DOTALL)
   next = thread_start_marker.nextSibling
@@ -203,10 +201,18 @@ def get_threads(url):
     response = urllib2.urlopen(req)
     html = response.read()
     threads = extract_threads(url, html)
+    for thread in threads:
+      thread.responses = get_responses(url, thread.number)
   except urllib2.HTTPError as e:
     print e.code
     print e.read()
   return threads
+
+def get_threads_async(url):
+  '''
+  Non blocking version of futaba url scrape
+  '''
+  pass
 
 def get_responses(board_url, post_num):
   '''
@@ -214,6 +220,21 @@ def get_responses(board_url, post_num):
   :arg board_url base url of yotsuba board (NOT url of respond page)
   :post_num post id of original thread
   '''
+  responses = {}
+  url = response_url_from_board(board_url, post_num)
+  req = urllib2.Request(url)
+  try:
+    response = urllib2.urlopen(req)
+    html = response.read()
+    soup = BeautifulSoup(html)
+    markers = soup(text=re.compile(THREAD_START_MARKER_REGEX))
+    if len(markers)<1:
+      return responses
+    responses = extract_responses(markers[0])
+  except urllib2.HTTPError as e:
+    print e.code
+    print e.read()
+  return responses
   
 
 
