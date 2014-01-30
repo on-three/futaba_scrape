@@ -28,6 +28,9 @@ FUTABA_PAGE_REGEX = ur'(futaba|\d{1,2})\.htm$'
 #futaba respond page url (on same board as above)
 #http://dat.2chan.net/16/res/476764.htm
 FUTABA_THREAD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/res/\d*?\.htm$'
+#http://jan.2chan.net/dat/img2/src/1391009985606.jpg
+IMG_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/\d*?.jpg$'
+
 
 def is_futaba_board(url):
   '''
@@ -49,18 +52,35 @@ def response_url_from_board(url, post_id):
   rurl = re.sub(FUTABA_PAGE_REGEX, page, url)
   return rurl
 
+def is_image_url(url):
+  '''
+  discern whether the given url is an image url or not
+  '''
+  print 'trying image url ' + url
+  if re.match(re.compile(IMG_URL_REGEX, re.UNICODE), url):
+    print 'passed'
+    return 'True'
+  else:
+    print 'failed'
+    return False
+
 class Post(object):
   '''
   the usual. encapsulates an image board post.
   '''
-  def __init__(self, time, number, text, image, responses={}):
+  def __init__(self, time, number, text, image, thumbnail, responses={}):
     '''
     constructor
     '''
     self.time = time
     self.number = number
-    self.text = text
+    if not image:
+      image = ''
+    if not thumbnail:
+      thumbnail = ''
+    self.thumbnail = thumbnail
     self.image = image
+    self.text = text
     #a dictionary of responses. Keys are meant to be
     #post number, and values are Post objects.
     #in responses this will typically remain empty.
@@ -72,14 +92,9 @@ class Post(object):
     '''
     date_time = unicode(strftime(u"%a, %d %b %Y %H:%M:%S", self.time))
     post_number = unicode(self.number)
-    s = u'{d} {p} {t}\n'.format(d=date_time, p=post_number, t=unicode(self.text))
+    s = u'{d} {p} {i} {b} {t}\n'.format(d=date_time, p=post_number,i=self.image, b=self.thumbnail, t=unicode(self.text))
     for post_number, response in self.responses.iteritems():
-      pn = unicode(post_number)
-      date_time = unicode(strftime(u"%a, %d %b %Y %H:%M:%S", response.time))
-      s += u'===>{d} {p} {t}\n'.format( \
-        d=date_time, \
-        p=pn, \
-        t=response.text)
+      s += u'-->{response}'.format(response=unicode(response))
     return s
 
   @staticmethod
@@ -92,10 +107,19 @@ class Post(object):
     '''
     text = html.findNext('blockquote')
     contents = u''.join([unicode(x) for x in text.contents])
-    img = html.findNext('a')
+    img = ''
+    thumbnail = ''
+    img_links = html.findAll('img', recursive=True)
+    try:
+      img = img_links[0].findParent('a')['href']
+      thumbnail = img_links[0]['src']
+    except (TypeError, IndexError):
+      img = ''
+      thumbnail = ''
+
     date_number = html.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
-    return Post(time, number, contents, img)
+    return Post(time, number, contents, img, thumbnail)
     
 
 def extract_date_time_number(text):
@@ -140,13 +164,16 @@ def extract_threads(url, html):
   soup = BeautifulSoup(html)
   markers = soup(text=re.compile(THREAD_START_MARKER_REGEX))
   for marker in markers:
-    img = marker.findNext('a')
+    img = ''
+    thumbnail_tag = marker.findNext('img')
+    thumbnail = thumbnail_tag['src']
+    img = thumbnail_tag.findParent('a')['href']
     text = marker.findNext('blockquote')
     contents = u''.join([unicode(x) for x in text.contents])
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
     responses = extract_responses(marker)
-    results.append(Post(time, number, contents, img, responses))
+    results.append(Post(time, number, contents, img, thumbnail, responses))
   return results
 
 def extract_responses(thread_start_marker):
