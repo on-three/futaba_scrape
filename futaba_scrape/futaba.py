@@ -52,26 +52,16 @@ def response_url_from_board(url, post_id):
   rurl = re.sub(FUTABA_PAGE_REGEX, page, url)
   return rurl
 
-def is_image_url(url):
-  '''
-  discern whether the given url is an image url or not
-  '''
-  print 'trying image url ' + url
-  if re.match(re.compile(IMG_URL_REGEX, re.UNICODE), url):
-    print 'passed'
-    return 'True'
-  else:
-    print 'failed'
-    return False
-
 class Post(object):
   '''
   the usual. encapsulates an image board post.
   '''
-  def __init__(self, time, number, text, image, thumbnail, responses={}):
+  def __init__(self, title, name, time, number, text, image, thumbnail, responses={}):
     '''
     constructor
     '''
+    self.title = title
+    self.name = name
     self.time = time
     self.number = number
     if not image:
@@ -92,7 +82,7 @@ class Post(object):
     '''
     date_time = unicode(strftime(u"%a, %d %b %Y %H:%M:%S", self.time))
     post_number = unicode(self.number)
-    s = u'{d} {p} {i} {b} {t}\n'.format(d=date_time, p=post_number,i=self.image, b=self.thumbnail, t=unicode(self.text))
+    s = u'{title} {n} {d} {p} {i} {b} {t}\n'.format(title=self.title, n=self.name, d=date_time, p=post_number,i=self.image, b=self.thumbnail, t=unicode(self.text))
     for post_number, response in self.responses.iteritems():
       s += u'-->{response}'.format(response=unicode(response))
     return s
@@ -110,6 +100,9 @@ class Post(object):
     img = ''
     thumbnail = ''
     img_links = html.findAll('img', recursive=True)
+    bold = html.findAll('b')
+    title = bold[0].text
+    name = bold[1].text
     try:
       img = img_links[0].findParent('a')['href']
       thumbnail = img_links[0]['src']
@@ -119,7 +112,7 @@ class Post(object):
 
     date_number = html.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
-    return Post(time, number, contents, img, thumbnail)
+    return Post(title, name, time, number, contents, img, thumbnail)
     
 
 def extract_date_time_number(text):
@@ -164,6 +157,9 @@ def extract_threads(url, html):
   soup = BeautifulSoup(html)
   markers = soup(text=re.compile(THREAD_START_MARKER_REGEX))
   for marker in markers:
+    bold = marker.findNext('b')
+    title = bold.text
+    name = bold.findNext('b').text
     img = ''
     thumbnail_tag = marker.findNext('img')
     thumbnail = thumbnail_tag['src']
@@ -173,7 +169,7 @@ def extract_threads(url, html):
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
     responses = extract_responses(marker)
-    results.append(Post(time, number, contents, img, thumbnail, responses))
+    results.append(Post(title, name, time, number, contents, img, thumbnail, responses))
   return results
 
 def extract_responses(thread_start_marker):
