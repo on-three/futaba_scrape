@@ -20,6 +20,33 @@ DATE_TIME_NUMBER_REGEX = ur'.*?(?P<date>(?P<year>\d{2})/(?P<month>\d{2})/(?P<day
 THREAD_START_MARKER_REGEX = ur'\u753B\u50CF\u30D5\u30A1\u30A4\u30EB\u540D\uFF1A'
 RESPONSE_MARKER_REGEX = ur'.*?\u2026.*?'
 
+#basic futaba url
+#http://dat.2chan.net/16/futaba.htm
+#http://dat.2chan.net/16/2.htm (where number can be 1-10 (higher?)
+FUTABA_BOARD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/(futaba|\d{1,2}).htm$'
+#futaba respond page url (on same board as above)
+#http://dat.2chan.net/16/res/476764.htm
+FUTABA_THREAD_URL_REGEX = ur'^http://.*?\.2chan.net/.*?/res/\d*?\.htm$'
+
+def is_futaba_board(url):
+  '''
+  Return boolean corresponsind to wether the board URL is 
+  a futaba image boad page or not.
+  '''
+  futaba_board_url_regex = re.compile(FUTABA_BOARD_URL_REGEX, re.UNICODE)
+  return re.match(futaba_board_url_regex, url) != None
+
+def response_url_from_board(url, post_id):
+  '''
+  Provided a given futaba bas page url and a post id
+  on that page, form the url of the response page.
+  This is to give us URLs of _complete_ response pages
+  '''
+  if not is_futaba_url(url):
+    return ''
+  pass
+  
+
 class Post(object):
   '''
   the usual. encapsulates an image board post.
@@ -62,7 +89,7 @@ class Post(object):
     arg: html a bs4 node representing the cell
     '''
     text = html.findNext('blockquote')
-    contents = u''.join(text.findAll(text=True))
+    contents = u''.join([unicode(x) for x in text.contents])
     img = html.findNext('a')
     date_number = html.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
@@ -96,12 +123,16 @@ def extract_date_time_number(text):
     number = int(n)  
   return (date_time, number)
 
-def extract_threads(html):
+def extract_threads(url, html):
   '''
   Draw thread starting posts out of current html document
   Returns a list of Post objectes, each one being a thread.
   The Post objects responses will be populated with all _available_
   information. i.e. hidden responses will not be populated.
+  :arg url base url of board we're extracting threads from
+  :arg html html response with page cotents
+  the url is included becase we need it to form urls for full
+  response pages
   '''
   results = []
   soup = BeautifulSoup(html)
@@ -109,14 +140,14 @@ def extract_threads(html):
   for marker in markers:
     img = marker.findNext('a')
     text = marker.findNext('blockquote')
-    contents = ''.join(text.findAll(text=True))
+    contents = u''.join([unicode(x) for x in text.contents])
     date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
     time, number = extract_date_time_number(date_number)
-    responses = extract_responses(marker)
+    responses = extract_responses(url, marker)
     results.append(Post(time, number, contents, img, responses))
   return results
 
-def extract_responses(thread_start_marker):
+def extract_responses(url, thread_start_marker):
   '''
   arg: thread_start_marker is a bf4 object that represents the start
   of a thread in a bf4 'soup' object.
@@ -126,6 +157,9 @@ def extract_responses(thread_start_marker):
   and value equal to a Post object for each response.
   '''
   responses = {}
+  #fetch html from the response page of this thread start and then parse
+  #it for _all_ responses
+  #response_url = 
 
   thread_start = re.compile(THREAD_START_MARKER_REGEX, re.UNICODE|re.DOTALL)
   response_start = re.compile(RESPONSE_MARKER_REGEX, re.UNICODE|re.DOTALL)
@@ -161,15 +195,25 @@ def get_threads(url):
   Post.responses dictionary will be filled with responses
   '''
   threads = []
+  if not is_futaba_board(url):
+    return threads
+
   req = urllib2.Request(url)
   try:
     response = urllib2.urlopen(req)
     html = response.read()
-    threads = extract_threads(html)
+    threads = extract_threads(url, html)
   except urllib2.HTTPError as e:
     print e.code
     print e.read()
   return threads
 
+def get_responses(board_url, post_num):
+  '''
+  Return all responses to a thread given a board url and its post number
+  :arg board_url base url of yotsuba board (NOT url of respond page)
+  :post_num post id of original thread
+  '''
+  
 
 
