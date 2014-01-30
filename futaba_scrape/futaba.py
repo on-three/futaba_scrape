@@ -14,6 +14,7 @@ import re
 from time import strptime
 import romkan
 from time import strftime
+import urllib2
 
 DATE_TIME_NUMBER_REGEX = ur'.*?(?P<date>(?P<year>\d{2})/(?P<month>\d{2})/(?P<day>\d{2})).*?(?P<time>(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})).*?No.(?P<number>\d*)'
 THREAD_START_MARKER_REGEX = ur'\u753B\u50CF\u30D5\u30A1\u30A4\u30EB\u540D\uFF1A'
@@ -151,5 +152,24 @@ def scrape_futaba(html):
   passing to this method.
   '''
   return extract_threads(html)
+
+def get_threads(url):
+  '''
+  Get the threads from a futaba image board page
+  arg: html url of page.
+  returns list of Post objects describing threads
+  Post.responses dictionary will be filled with responses
+  '''
+  threads = []
+  req = urllib2.Request(url)
+  try:
+    response = urllib2.urlopen(req)
+    html = response.read()
+    threads = extract_threads(html)
+  except urllib2.HTTPError as e:
+    print e.code
+    print e.read()
+  return threads
+
 
 
