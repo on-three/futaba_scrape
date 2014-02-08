@@ -254,9 +254,9 @@ def get_responses(board_url, post_num):
     if len(markers)<1:
       return responses
     responses = extract_responses(markers[0])
-  except urllib2.HTTPError as e:
-    print e.code
-    print e.read()
+  #catch all exceptions here as there may be _NO_ responses.
+  except Exception as e:
+    print str(e)
   return responses
   
 
