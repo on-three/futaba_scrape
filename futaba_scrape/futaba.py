@@ -100,9 +100,16 @@ class Post(object):
     img = ''
     thumbnail = ''
     img_links = html.findAll('img', recursive=True)
-    bold = html.findAll('b')
-    title = bold[0].text
-    name = bold[1].text
+    title = ''
+    name = ''
+    try:
+      bold = html.findAll('b')
+      title = bold[0].text
+      name = bold[1].text
+    except IndexError as e:
+      print str(e)
+      title='unknown'
+      name='unknown'
     try:
       img = img_links[0].findParent('a')['href']
       thumbnail = img_links[0]['src']
