@@ -17,6 +17,8 @@ from time import strftime
 import urllib2
 
 DATE_TIME_NUMBER_REGEX = ur'.*?(?P<date>(?P<year>\d{2})/(?P<month>\d{2})/(?P<day>\d{2})).*?(?P<time>(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})).*?No.(?P<number>\d*)'
+DATE_TIME_REGEX = ur'.*?(?P<date>(?P<year>\d{2})/(?P<month>\d{2})/(?P<day>\d{2})).*?(?P<time>(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2}))'
+POST_NUMBER_REGEX = ur'.*?No\.(?P<number>\d*)'
 THREAD_START_MARKER_REGEX = ur'\u753B\u50CF\u30D5\u30A1\u30A4\u30EB\u540D\uFF1A'
 RESPONSE_MARKER_REGEX = ur'.*?\u2026.*?'
 
@@ -117,8 +119,11 @@ class Post(object):
       img = ''
       thumbnail = ''
 
-    date_number = html.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
-    time, number = extract_date_time_number(date_number)
+    d = html.findNext(text=re.compile(DATE_TIME_REGEX))
+    time = extract_date_time(d)
+    n = html.findNext(text=re.compile(POST_NUMBER_REGEX))
+    number = extract_post_number(n)
+
     return Post(title, name, time, number, contents, img, thumbnail)
     
 
@@ -149,6 +154,30 @@ def extract_date_time_number(text):
     number = int(n)  
   return (date_time, number)
 
+def extract_date_time(text):
+  '''
+  Extract a python datetime from text
+  '''
+  date_time = None
+  m = re.match(re.compile(DATE_TIME_REGEX, re.UNICODE), text)
+  if m:
+    d = m.groupdict()['date'].encode('utf-8')
+    t = m.groupdict()['time'].encode('utf-8')
+    #form a datetime structure from the extracted data
+    date_time = strptime('{d} {t}'.format(d=d, t=t), '%y/%m/%d %H:%M:%S')
+  return date_time
+
+def extract_post_number(text):
+  '''
+  Extract a post number from text
+  '''
+  number = 0
+  m = re.match(re.compile(POST_NUMBER_REGEX, re.UNICODE), text)
+  if m:
+    n = m.groupdict()['number'].encode('utf-8')
+    number = int(n)
+  return number
+
 def extract_threads(url, html):
   '''
   Draw thread starting posts out of current html document
@@ -173,8 +202,11 @@ def extract_threads(url, html):
     img = thumbnail_tag.findParent('a')['href']
     text = marker.findNext('blockquote')
     contents = u''.join([unicode(x) for x in text.contents])
-    date_number = marker.findNext(text=re.compile(DATE_TIME_NUMBER_REGEX))
-    time, number = extract_date_time_number(date_number)
+    d = marker.findNext(text=re.compile(DATE_TIME_REGEX))
+    time = extract_date_time(d)
+    n = marker.findNext(text=re.compile(POST_NUMBER_REGEX))
+    number = extract_post_number(n)
+    
     responses = extract_responses(marker)
     results.append(Post(title, name, time, number, contents, img, thumbnail, responses))
   return results
